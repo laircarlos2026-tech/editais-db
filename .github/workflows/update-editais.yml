@@ -1,0 +1,42 @@
+name: Atualizar base de editais
+
+on:
+  schedule:
+    - cron: '0 6 * * 0'  # Todo domingo às 03:00 BRT (06:00 UTC)
+  workflow_dispatch:       # Permite rodar manualmente também
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: pip install requests
+
+      - name: Baixar editais
+        env:
+          SITE_NONCE: ${{ secrets.SITE_NONCE }}
+          SITE_COOKIE: ${{ secrets.SITE_COOKIE }}
+        run: python scripts/download_editais.py
+
+      - name: Verificar se houve mudança
+        id: check
+        run: |
+          git diff --exit-code data/editais.json || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit e push
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/editais.json data/meta.json
+          git commit -m "chore: atualiza base de editais $(date +'%Y-%m-%d')"
+          git push
