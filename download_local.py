@@ -24,8 +24,8 @@ from datetime import datetime, timedelta
 #  CONFIGURE AQUI — cole os valores do console F12
 # ══════════════════════════════════════════════════
 
-NONCE  = "COLE_SEU_NONCE_AQUI"    # LC_SAAS.nonce no console
-COOKIE = "COLE_SEU_COOKIE_AQUI"   # document.cookie no console
+NONCE  = "e05d83b822"    # LC_SAAS.nonce no console
+COOKIE = "arm_cookie_864=j123mrebtobslom6cjup3mo5ge%7C%7C15740; _lscache_vary=b60564aa0c6d049a2184ae90f510f55b; wordpress_logged_in_301659c0d8fba8e227884b096f4f9ea1=kleilson%40duck.com%7C1774482702%7Cko1PYLIWywEQJpkUujlMkk29jcRfAlvqueWA9tjyeLv%7C3e3b007073b78eebdbb80494b095853d165a7102628e3003c7acdb5890ead9bb; _ga=GA1.1.2033689352.1773600177; _ga_E9QEVHH8SH=GS2.1.s1773937212$o4$g1$t1773937212$j60$l0$h0; TawkConnectionTime=0; twk_uuid_6978f941644c08197db0d70e=%7B%22uuid%22%3A%221.sd9F58YAJeiR6U1tQPewzsQ8T1cgJgiV0x4ZNpJi8O1IlXTvsZovz3NAT5QgTHREBWUSG4uwB8TPad7HoIyKCbKijQd2cxchoqOxnDG7PMh2XvgzlL4x1W5HL3nSJn5MnnEg2TAcH%22%2C%22version%22%3A3%2C%22domain%22%3A%22localizadordeeditais.com.br%22%2C%22ts%22%3A1773939232290%7D"   # document.cookie no console
 
 # ══════════════════════════════════════════════════
 #  CONFIGURAÇÕES OPCIONAIS
