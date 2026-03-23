@@ -18,6 +18,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict
 
 import requests
+try:
+    import db as _db
+    DB_DISPONIVEL = True
+except Exception:
+    DB_DISPONIVEL = False
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
@@ -464,9 +469,47 @@ async def callback_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await executar_busca(update, ctx, params, query=query)
 
 
+
+async def carregar_ou_baixar_editais(ctx, chat_id, uf=None, cidade=None, data_ini=None, data_fim=None):
+    """Carrega editais do PostgreSQL (preferencial) ou do arquivo local."""
+
+    # ── Tenta PostgreSQL primeiro ──
+    if DB_DISPONIVEL:
+        try:
+            await ctx.bot.send_message(chat_id=chat_id, text="🗄️ Consultando banco de dados...")
+            editais = _db.buscar_editais(uf=uf, cidade=cidade, data_ini=data_ini, data_fim=data_fim)
+            if editais:
+                await ctx.bot.send_message(chat_id=chat_id,
+                    text=f"✅ {len(editais):,} editais encontrados no banco.")
+                return editais
+            else:
+                await ctx.bot.send_message(chat_id=chat_id,
+                    text="⚠️ Banco vazio. Tente rodar sincronizar_db.py local.")
+                return []
+        except Exception as e:
+            await ctx.bot.send_message(chat_id=chat_id,
+                text=f"⚠️ Banco indisponível ({e}). Tentando arquivo local...")
+
+    # ── Fallback: arquivo local ──
+    if os.path.exists(OUT_FILE):
+        return json.load(open(OUT_FILE, encoding="utf-8"))
+
+    await ctx.bot.send_message(chat_id=chat_id,
+        text="❌ Sem banco e sem editais.json. Rode sincronizar_db.py primeiro.")
+    return None
+
+
+async def enviar(ctx, chat_id, texto, parse_mode="HTML", preview=True):
+    """Helper: envia mensagem independente de ser query ou message."""
+    await ctx.bot.send_message(
+        chat_id=chat_id, text=texto,
+        parse_mode=parse_mode,
+        disable_web_page_preview=not preview
+    )
+
 async def executar_busca(update, ctx, args_raw, query=None):
     """Parseia os argumentos, filtra e roda a análise."""
-    msg_obj = query or update.message
+    chat_id = update.effective_chat.id
 
     # Parseia parâmetros chave=valor
     params = {}
@@ -482,12 +525,22 @@ async def executar_busca(update, ctx, args_raw, query=None):
     meses   = int(params.get("mes", 0))
     score   = int(params.get("score", SCORE_MINIMO))
 
-    # Carrega editais
-    if not os.path.exists(OUT_FILE):
-        await msg_obj.reply_text("❌ editais.json não encontrado. Rode atualizar.py.")
-        return
+    # Carrega editais (local ou baixa da API)
+    # Calcula datas para filtro no banco
+    from datetime import datetime, timedelta
+    agora = datetime.now()
+    data_ini_db = agora if (semanas or meses) else None
+    data_fim_db = (agora + timedelta(weeks=semanas)) if semanas else                   (agora + timedelta(days=30*meses)) if meses else None
 
-    editais = json.load(open(OUT_FILE, encoding="utf-8"))
+    editais = await carregar_ou_baixar_editais(
+        ctx, chat_id,
+        uf=uf or None,
+        cidade=cidade or None,
+        data_ini=data_ini_db,
+        data_fim=data_fim_db,
+    )
+    if editais is None:
+        return
 
     # Status
     resumo = []
@@ -502,7 +555,7 @@ async def executar_busca(update, ctx, args_raw, query=None):
     if query:
         await query.edit_message_text(texto_status, parse_mode="HTML")
     else:
-        status_msg = await update.message.reply_text(texto_status, parse_mode="HTML")
+        await enviar(ctx, chat_id, texto_status)
 
     # Aplica filtros
     filtrados, info_geo = filtrar_editais(
@@ -511,7 +564,7 @@ async def executar_busca(update, ctx, args_raw, query=None):
     )
 
     if not filtrados:
-        await (query or status_msg).reply_text("😕 Nenhum edital encontrado com esses filtros.")
+        await enviar(ctx, chat_id, "😕 Nenhum edital encontrado com esses filtros.")
         return
 
     texto_status2 = (
@@ -522,7 +575,7 @@ async def executar_busca(update, ctx, args_raw, query=None):
     if query:
         await query.edit_message_text(texto_status2, parse_mode="HTML")
     else:
-        await status_msg.edit_text(texto_status2, parse_mode="HTML")
+        await enviar(ctx, chat_id, texto_status2)
 
     # Roda análise em thread separada para não travar o bot
     loop = ctx.application.loop if hasattr(ctx.application, "loop") else None
@@ -541,7 +594,7 @@ async def executar_busca(update, ctx, args_raw, query=None):
         if query:
             await query.edit_message_text(txt)
         else:
-            await status_msg.edit_text(txt)
+            await enviar(ctx, chat_id, txt)
         return
 
     # Cabeçalho do resultado
@@ -554,7 +607,7 @@ async def executar_busca(update, ctx, args_raw, query=None):
     if query:
         await query.edit_message_text(cab, parse_mode="HTML")
     else:
-        await status_msg.edit_text(cab, parse_mode="HTML")
+        await enviar(ctx, chat_id, cab)
 
     # Envia cada resultado
     chat_id = update.effective_chat.id
