@@ -21,8 +21,10 @@ import requests
 try:
     import db as _db
     DB_DISPONIVEL = True
-except Exception:
+    print("✅ db.py carregado OK", flush=True)
+except Exception as _e:
     DB_DISPONIVEL = False
+    print(f"❌ db.py falhou: {_e}", flush=True)
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
@@ -487,8 +489,9 @@ async def carregar_ou_baixar_editais(ctx, chat_id, uf=None, cidade=None, data_in
                     text="⚠️ Banco vazio. Tente rodar sincronizar_db.py local.")
                 return []
         except Exception as e:
+            print(f"❌ Erro banco: {e}", flush=True)
             await ctx.bot.send_message(chat_id=chat_id,
-                text=f"⚠️ Banco indisponível ({e}). Tentando arquivo local...")
+                text=f"⚠️ Banco indisponível: {e}")
 
     # ── Fallback: arquivo local ──
     if os.path.exists(OUT_FILE):
