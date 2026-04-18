@@ -1,8 +1,8 @@
 {
-  "total": 34998,
-  "atualizado": "2026-04-12T18:24:31",
+  "total": 36827,
+  "atualizado": "2026-04-17T23:32:08",
   "dias_atras": 60,
-  "modo": "completo",
-  "novos": 34998,
-  "tempo_segundos": 713.9
+  "modo": "incremental",
+  "novos": 1829,
+  "tempo_segundos": 32.5
 }
